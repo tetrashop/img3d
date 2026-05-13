@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Img3D - تبدیل تصویر به سه‌بعدی</title>
+    <style>
+        body { font-family: Tahoma; background: #f4f4f9; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        input, button { margin: 10px 0; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .result { margin-top: 20px; padding: 10px; background: #e9ecef; border-radius: 5px; }
+        .plans { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .plan { border: 1px solid #ddd; padding: 20px; border-radius: 10px; width: 30%; text-align: center; }
+        .price { font-size: 1.5em; color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Img3D</h1>
+        <p>تبدیل تصاویر به مدل سه‌بعدی (نسخه آزمایشی)</p>
+        <div class="plans">
+            <div class="plan"><h3>⚡ فوری</h3><p class="price">۱۰ دلار</p></div>
+            <div class="plan"><h3>️ استاندارد</h3><p class="price">۲۵ دلار</p></div>
+            <div class="plan"><h3> حرفه‌ای</h3><p class="price">۵۰ دلار</p></div>
+        </div>
+        <h2>آپلود آزمایشی</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="imageInput" name="image" accept="image/*" required>
+            <button type="submit">تبدیل به 3D</button>
+        </form>
+        <div class="result" id="result" style="display:none;"></div>
+    </div>
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fd = new FormData();
+            fd.append('image', document.getElementById('imageInput').files[0]);
+            const res = document.getElementById('result');
+            res.style.display = 'block';
+            res.innerHTML = 'در حال پردازش...';
+            try {
+                const resp = await fetch('/api/real-convert', { method:'POST', body:fd });
+                const data = await resp.json();
+                if (data.success) res.innerHTML = `✅ موفق! <a href="${data.model_url}">دانلود فایل OBJ</a>`;
+                else res.innerHTML = `❌ خطا: ${data.message}`;
+            } catch (err) { res.innerHTML = '❌ خطا در ارتباط با سرور'; }
+        });
+    </script>
+</body>
+</html>
