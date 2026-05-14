@@ -8,14 +8,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup Java
+    - name: Setup Java 17
       uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
+        distribution: temurin
         java-version: '17'
 
     - name: Setup Android SDK
@@ -24,18 +25,32 @@ jobs:
     - name: Build APK
       run: |
         cd android-app
-        gradle assembleRelease
+        gradle assembleRelease --no-daemon --stacktrace
+
+    - name: Find and prepare APK
+      run: |
+        echo "Searching for APK files..."
+        find android-app -name "*.apk" -type f
+        APK=$(find android-app -name "*.apk" -type f | head -1)
+        if [ -z "$APK" ]; then
+          echo "ERROR: No APK generated"
+          exit 1
+        fi
+        echo "APK: $APK"
+        cp "$APK" img3d.apk
+        ls -la img3d.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: img3d-apk
-        path: android-app/build/outputs/apk/release/*.apk
+        path: img3d.apk
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.run_number }}
-        files: android-app/build/outputs/apk/release/*.apk
+        name: "Img3D Release v${{ github.run_number }}"
+        files: img3d.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
