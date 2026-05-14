@@ -8,56 +8,40 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
+
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
-    
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
-    
-    - name: Install Bubblewrap
-      run: npm install -g @bubblewrap/cli
-    
-    - name: Install Python and Pillow
-      run: |
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq python3-pip
-        pip3 install pillow
-    
-    - name: Generate icons
-      run: python3 generate_icons.py
-    
-    - name: Initialize Bubblewrap
-      run: bubblewrap init --manifest="./pwa/manifest.json" --directory=./android
-    
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x android-app/gradlew || true
+
     - name: Build APK
       run: |
-        cd android
-        bubblewrap build
-    
-    - name: Find and copy APK
+        cd android-app
+        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+        gradle assembleRelease
+
+    - name: Find APK
       run: |
-        APK_PATH=$(find android -name "*.apk" | head -1)
-        cp "$APK_PATH" img3d-latest.apk
-    
+        APK=$(find android-app -name "*.apk" | head -1)
+        cp "$APK" img3d-latest.apk
+
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: img3d-apk
         path: img3d-latest.apk
-    
+
     - name: Create Release
       if: success()
       uses: softprops/action-gh-release@v2
@@ -68,6 +52,6 @@ jobs:
         body: |
           ## Img3D - نسخه جدید
           **نسخه:** v${{ github.run_number }}
-          **APK آماده نصب روی اندروید**
+          **فایل APK برای اندروید**
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
