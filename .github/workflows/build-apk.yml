@@ -1,0 +1,101 @@
+name: Build and Release APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # امکان اجرای دستی از طریق تب Actions
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+    
+    - name: Install Bubblewrap
+      run: npm install -g @bubblewrap/cli
+    
+    - name: Install Python and generate icons
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-pip
+        pip3 install pillow
+        python3 << 'PYEOF'
+from PIL import Image, ImageDraw, ImageFont
+import os
+
+os.makedirs('static', exist_ok=True)
+
+# آیکون ۱۹۲×۱۹۲
+img192 = Image.new('RGB', (192, 192), color='#007bff')
+draw192 = ImageDraw.Draw(img192)
+draw192.rectangle([30, 60, 162, 132], fill='white')
+draw192.text((45, 80), "Img3D", fill='#007bff')
+img192.save('static/icon-192.png')
+
+# آیکون ۵۱۲×۵۱۲
+img512 = Image.new('RGB', (512, 512), color='#007bff')
+draw512 = ImageDraw.Draw(img512)
+draw512.rectangle([80, 160, 432, 352], fill='white')
+draw512.text((120, 210), "Img3D", fill='#007bff')
+img512.save('static/icon-512.png')
+PYEOF
+    
+    - name: Initialize Bubblewrap
+      run: |
+        bubblewrap init --manifest="https://tetrashop.github.io/img3d/manifest.json" --directory=./android
+    
+    - name: Build APK
+      run: |
+        cd android
+        bubblewrap build
+    
+    - name: Find and rename APK
+      run: |
+        APK_PATH=$(find android -name "*.apk" | head -1)
+        cp "$APK_PATH" img3d-latest.apk
+    
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: img3d-apk
+        path: img3d-latest.apk
+    
+    - name: Create Release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        files: img3d-latest.apk
+        body: |
+          ## 🚀 نسخه جدید Img3D
+          
+          - **نسخه:** v${{ github.run_number }}
+          - **تاریخ ساخت:** $(date +%Y-%m-%d)
+          
+          ### 📱 نصب
+          فایل APK را دانلود و روی اندروید نصب کنید.
+          
+          ### ⚠️ توجه
+          - این APK یک WebView از نسخه تحت وب است.
+          - برای اجرای کامل، سرور Flask باید در دسترس باشد.
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

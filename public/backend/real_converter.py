@@ -1,6 +1,7 @@
 # backend/real_converter.py – نسخه نهایی با دانلود درست و پرداخت امن غیرمستقیم از طریق رمزینکس
 
 from flask import Flask, request, jsonify, send_from_directory
+from flask import send_from_directory as static_send
 from PIL import Image, ImageFilter
 import numpy as np
 import os, uuid
@@ -89,6 +90,14 @@ def index():
         }}
         .note {{ font-size: 0.9em; color: #555; margin-top: 10px; }}
     </style>
+<link rel="manifest" href="/manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+</script>
 </head>
 <body>
     <div class="container">
@@ -175,6 +184,19 @@ def real_convert():
 def download_file(filename):
     # ارسال فایل از مسیر مطلق (بدون مشکل 404)
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory(os.path.join(BASE_DIR, '../../pwa'), 'manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    return send_from_directory(os.path.join(BASE_DIR, '../../pwa'), 'sw.js')
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(os.path.join(BASE_DIR, '../../static'), filename)
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
