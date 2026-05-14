@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# 👇 این بخش را اضافه کنید (کلید حل مشکل)
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,38 +37,29 @@ jobs:
         set -x
         cd android-app
 
-        # مسیرها
         AAPT="$ANDROID_HOME/build-tools/34.0.0/aapt"
         D8="$ANDROID_HOME/build-tools/34.0.0/d8"
         APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
         ANDROID_JAR="$ANDROID_HOME/platforms/android-34/android.jar"
 
-        # ۱. ایجاد R.java (اگر res وجود دارد)
         $AAPT package -f -m -J gen -M AndroidManifest.xml -S res -I $ANDROID_JAR 2>/dev/null || true
 
-        # ۲. اگر R.java ایجاد نشد، یک فایل خالی بگذار
         if [ ! -f gen/com/img3d/app/R.java ]; then
           mkdir -p gen/com/img3d/app
           echo "package com.img3d.app; public class R {}" > gen/com/img3d/app/R.java
         fi
 
-        # ۳. کامپایل جاوا
         mkdir -p obj
         javac -source 1.8 -target 1.8 -bootclasspath $ANDROID_JAR -d obj src/com/img3d/app/MainActivity.java gen/com/img3d/app/R.java
 
-        # ۴. ساخت DEX
         $D8 --release --lib $ANDROID_JAR --output . $(find obj -name '*.class')
-        # d8 خروجی را در classes.dex می‌ریزد
 
-        # ۵. بسته‌بندی APK
         $AAPT package -f -M AndroidManifest.xml -S res -I $ANDROID_JAR -F app-unsigned.apk
         $AAPT add app-unsigned.apk classes.dex
 
-        # ۶. امضای APK
         keytool -genkey -v -keystore debug.keystore -alias debug -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=US" 2>/dev/null || true
         $APKSIGNER sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android app-unsigned.apk
 
-        # ۷. انتقال به ریشه
         mv app-unsigned.apk ../img3d.apk
         echo "✅ APK ساخته شد: img3d.apk"
 
