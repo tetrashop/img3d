@@ -1,21 +1,14 @@
 {
-  "name": "Img3D - 3D Model Converter",
+  "name": "Img3D",
   "short_name": "Img3D",
-  "description": "Convert 2D images to 3D OBJ models with secure payment via Ramzinex.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4f4f9",
+  "background_color": "#ffffff",
   "theme_color": "#007bff",
-  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/static/icon-192.png",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
       "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/icon-512.png",
-      "sizes": "512x512",
       "type": "image/png"
     }
   ]
