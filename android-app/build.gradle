@@ -1,12 +1,15 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application' version '8.5.0' apply false
+}
 
 android {
-    compileSdkVersion 34
+    namespace 'com.img3d.app'
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.img3d.app"
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdk 21
+        targetSdk 34
         versionCode 1
         versionName "1.0"
     }
@@ -16,11 +19,6 @@ android {
             minifyEnabled false
         }
     }
-}
-
-repositories {
-    google()
-    mavenCentral()
 }
 
 dependencies {
