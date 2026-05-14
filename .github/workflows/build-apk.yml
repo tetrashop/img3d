@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK (verbose)
 
 on:
   push:
@@ -8,10 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Setup Java 17
       uses: actions/setup-java@v4
@@ -22,35 +20,38 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Build APK
+    - name: Install Build Tools
+      run: yes | sdkmanager "build-tools;34.0.0" "platforms;android-34" || true
+
+    - name: Build APK with full log
       run: |
         cd android-app
-        gradle assembleRelease --no-daemon --stacktrace
+        gradle assembleRelease --info --stacktrace 2>&1 | tee build.log
+      continue-on-error: false
 
-    - name: Find and prepare APK
-      run: |
-        echo "Searching for APK files..."
-        find android-app -name "*.apk" -type f
-        APK=$(find android-app -name "*.apk" -type f | head -1)
-        if [ -z "$APK" ]; then
-          echo "ERROR: No APK generated"
-          exit 1
-        fi
-        echo "APK: $APK"
-        cp "$APK" img3d.apk
-        ls -la img3d.apk
-
-    - name: Upload APK
+    - name: Upload build log
+      if: always()
       uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: android-app/build.log
+
+    - name: Find and publish APK
+      if: success()
+      run: |
+        APK=$(find android-app -name "*.apk" | head -1)
+        cp "$APK" img3d.apk
+    - uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: img3d-apk
         path: img3d.apk
 
     - name: Create Release
+      if: success()
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.run_number }}
-        name: "Img3D Release v${{ github.run_number }}"
         files: img3d.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
