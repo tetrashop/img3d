@@ -8,47 +8,35 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Setup Java
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v3
+    
+    - name: set up JDK 11
+      uses: actions/setup-java@v3
       with:
+        java-version: '11'
         distribution: 'temurin'
-        java-version: '17'
-        
+    
     - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      
+      uses: android-actions/setup-android@v2
+    
     - name: Build APK
       run: |
         cd android-app
-        chmod +x gradlew 2>/dev/null || true
-        gradle assembleRelease
-        
-    - name: Copy APK
-      run: |
-        APK=$(find android-app -name "*.apk" 2>/dev/null | head -1)
-        if [ -z "$APK" ]; then
-          echo "APK not found!"
-          exit 1
-        fi
-        cp "$APK" img3d.apk
-        
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+        ./gradlew assembleRelease
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
       with:
-        name: img3d-apk
-        path: img3d.apk
-        
+        name: app-release
+        path: android-app/app/build/outputs/apk/release/*.apk
+    
     - name: Create Release
       if: success()
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ github.run_number }}
         name: Img3D v${{ github.run_number }}
-        files: img3d.apk
+        files: android-app/app/build/outputs/apk/release/*.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
