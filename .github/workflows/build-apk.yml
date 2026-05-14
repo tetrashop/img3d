@@ -9,7 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Setup Java 17
       uses: actions/setup-java@v4
@@ -17,23 +18,30 @@ jobs:
         distribution: temurin
         java-version: '17'
 
-    - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: 8.5
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install Build Tools
+      run: yes | sdkmanager "build-tools;34.0.0" "platforms;android-34" || true
+
+    - name: Clear Gradle Cache
+      run: rm -rf ~/.gradle/caches
 
     - name: Build APK
       run: |
         cd android-app
-        gradle assembleRelease --no-daemon
+        gradle assembleRelease --no-daemon --warning-mode all
 
-    - name: Find and prepare APK
+    - name: Find APK
       run: |
+        echo "Searching for APK..."
+        find android-app -name "*.apk" -type f
         APK=$(find android-app -name "*.apk" -type f | head -1)
         if [ -z "$APK" ]; then
-          echo "ERROR: APK not found!"
+          echo "ERROR: No APK"
           exit 1
         fi
+        echo "APK: $APK"
         cp "$APK" img3d.apk
 
     - name: Upload APK
