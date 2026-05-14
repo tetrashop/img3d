@@ -1,4 +1,4 @@
-name: Build and Release APK with Bubblewrap
+name: Build APK
 
 on:
   push:
@@ -6,76 +6,49 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+    
     steps:
-    - name: Checkout repository
+    - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
+      
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
-
+        
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
-
-    - name: Install Bubblewrap
-      run: npm install -g @bubblewrap/cli
-
-    - name: Install Python dependencies
-      run: pip3 install pillow
-
-    - name: Generate icons
-      run: python3 generate_icons.py
-
-    - name: Initialize Bubblewrap project (non-interactive)
-      run: bubblewrap init --manifest="manifest.json" --directory="./android" --skip-signing-key
-
+      
     - name: Build APK
       run: |
-        cd android
-        bubblewrap build
-
-    - name: Find and copy APK
+        cd android-app
+        chmod +x gradlew 2>/dev/null || true
+        gradle assembleRelease
+        
+    - name: Copy APK
       run: |
-        APK_PATH=$(find android -name "*.apk" | head -1)
-        cp "$APK_PATH" img3d-latest.apk
-
-    - name: Upload APK artifact
+        APK=$(find android-app -name "*.apk" 2>/dev/null | head -1)
+        if [ -z "$APK" ]; then
+          echo "APK not found!"
+          exit 1
+        fi
+        cp "$APK" img3d.apk
+        
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: img3d-apk
-        path: img3d-latest.apk
-
+        path: img3d.apk
+        
     - name: Create Release
       if: success()
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.run_number }}
-        name: Release v${{ github.run_number }}
-        files: img3d-latest.apk
-        body: |
-          ## 📱 Img3D - نسخه جدید
-          
-          **نسخه:** v${{ github.run_number }}
-          
-          ### ✨ نصب
-          این فایل APK یک WebView است که برای کار به سرور Flask محلی (`http://localhost:5000`) متصل می‌شود.
-          
-          ### ⚠️ پیش‌نیازها
-          - برنامه Termux و اجرای دستورات زیر:
-          \`\`\`bash
-          pip install flask pillow numpy werkzeug
-          python public/backend/real_converter.py
-          \`\`\`
+        name: Img3D v${{ github.run_number }}
+        files: img3d.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

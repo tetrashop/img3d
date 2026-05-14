@@ -15,6 +15,7 @@ public class MainActivity extends Activity {
         WebSettings webSettings = webView.getWebSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
+        webSettings.setAllowFileAccess(true);
         webView.loadUrl("http://localhost:5000");
         setContentView(webView);
     }
