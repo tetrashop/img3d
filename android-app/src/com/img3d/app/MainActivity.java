@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.WebSettings;
 
 public class MainActivity extends Activity {
     @Override
@@ -12,9 +11,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         WebView webView = new WebView(this);
         webView.setWebViewClient(new WebViewClient());
-        WebSettings webSettings = webView.getWebSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
+        webView.getSettings().setJavaScriptEnabled(true);
         webView.loadUrl("http://localhost:5000");
         setContentView(webView);
     }
