@@ -1,4 +1,4 @@
-name: Build and Release APK
+name: Build and Release APK with Bubblewrap
 
 on:
   push:
@@ -8,10 +8,16 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
 
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -22,19 +28,27 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x android-app/gradlew || true
+    - name: Install Bubblewrap
+      run: npm install -g @bubblewrap/cli
+
+    - name: Install Python dependencies
+      run: pip3 install pillow
+
+    - name: Generate icons
+      run: python3 generate_icons.py
+
+    - name: Initialize Bubblewrap project (non-interactive)
+      run: bubblewrap init --manifest="manifest.json" --directory="./android" --skip-signing-key
 
     - name: Build APK
       run: |
-        cd android-app
-        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-        gradle assembleRelease
+        cd android
+        bubblewrap build
 
-    - name: Find APK
+    - name: Find and copy APK
       run: |
-        APK=$(find android-app -name "*.apk" | head -1)
-        cp "$APK" img3d-latest.apk
+        APK_PATH=$(find android -name "*.apk" | head -1)
+        cp "$APK_PATH" img3d-latest.apk
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
@@ -50,8 +64,18 @@ jobs:
         name: Release v${{ github.run_number }}
         files: img3d-latest.apk
         body: |
-          ## Img3D - نسخه جدید
+          ## 📱 Img3D - نسخه جدید
+          
           **نسخه:** v${{ github.run_number }}
-          **فایل APK برای اندروید**
+          
+          ### ✨ نصب
+          این فایل APK یک WebView است که برای کار به سرور Flask محلی (`http://localhost:5000`) متصل می‌شود.
+          
+          ### ⚠️ پیش‌نیازها
+          - برنامه Termux و اجرای دستورات زیر:
+          \`\`\`bash
+          pip install flask pillow numpy werkzeug
+          python public/backend/real_converter.py
+          \`\`\`
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
