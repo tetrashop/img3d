@@ -1,4 +1,4 @@
-name: Build APK Manually
+name: Build APK
 
 on:
   push:
@@ -20,32 +20,11 @@ jobs:
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
+      with:
+        packages: 'platforms;android-34 build-tools;34.0.0'
 
-    - name: Install Android SDK Build Tools
-      run: |
-        yes | sdkmanager "build-tools;34.0.0" "platforms;android-34" || true
-
-    - name: Create R.java
-      run: |
-        aapt package -f -m -J android-app/gen -M android-app/AndroidManifest.xml -S android-app/res -I $ANDROID_HOME/platforms/android-34/android.jar 2>/dev/null || echo "aapt first pass done"
-
-    - name: Compile Java
-      run: |
-        javac -source 1.8 -target 1.8 -bootclasspath $ANDROID_HOME/platforms/android-34/android.jar -d android-app/obj android-app/src/com/img3d/app/MainActivity.java android-app/gen/com/img3d/app/R.java 2>/dev/null || echo "compilation done"
-
-    - name: Generate DEX
-      run: |
-        dx --dex --output=android-app/classes.dex android-app/obj/ 2>/dev/null || echo "dex done"
-
-    - name: Create APK
-      run: |
-        cd android-app
-        aapt package -f -M AndroidManifest.xml -S res -I $ANDROID_HOME/platforms/android-34/android.jar -F app-unsigned.apk 2>/dev/null || true
-        aapt add app-unsigned.apk classes.dex 2>/dev/null || true
-        # Sign the APK with debug keystore
-        keytool -genkey -v -keystore debug.keystore -alias debug -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=US" 2>/dev/null || true
-        apksigner sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android app-unsigned.apk 2>/dev/null || true
-        mv app-unsigned.apk ../img3d.apk
+    - name: Build APK with Python
+      run: python3 build_apk.py
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
