@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK (بدون Gradle)
 
 on:
   push:
@@ -9,48 +9,72 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
+    - name: دریافت کد
       uses: actions/checkout@v4
 
-    - name: Setup Java 17
+    - name: نصب Java 17
       uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: '17'
 
-    - name: Setup Android SDK
+    - name: نصب Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Install Build Tools
-      run: yes | sdkmanager "build-tools;34.0.0" "platforms;android-34" || true
-
-    - name: Clear Gradle Cache
-      run: rm -rf ~/.gradle/caches
-
-    - name: Build APK
+    - name: نصب ابزارهای ساخت
       run: |
+        yes | sdkmanager "build-tools;34.0.0" "platforms;android-34" > /dev/null 2>&1
+        echo "ANDROID_HOME=$ANDROID_HOME"
+        echo "BUILD_TOOLS=$ANDROID_HOME/build-tools/34.0.0"
+        echo "PLATFORM=$ANDROID_HOME/platforms/android-34"
+
+    - name: ساخت APK
+      run: |
+        set -x
         cd android-app
-        gradle assembleRelease --no-daemon --warning-mode all
 
-    - name: Find APK
-      run: |
-        echo "Searching for APK..."
-        find android-app -name "*.apk" -type f
-        APK=$(find android-app -name "*.apk" -type f | head -1)
-        if [ -z "$APK" ]; then
-          echo "ERROR: No APK"
-          exit 1
+        # مسیرها
+        AAPT="$ANDROID_HOME/build-tools/34.0.0/aapt"
+        D8="$ANDROID_HOME/build-tools/34.0.0/d8"
+        APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+        ANDROID_JAR="$ANDROID_HOME/platforms/android-34/android.jar"
+
+        # ۱. ایجاد R.java (اگر res وجود دارد)
+        $AAPT package -f -m -J gen -M AndroidManifest.xml -S res -I $ANDROID_JAR 2>/dev/null || true
+
+        # ۲. اگر R.java ایجاد نشد، یک فایل خالی بگذار
+        if [ ! -f gen/com/img3d/app/R.java ]; then
+          mkdir -p gen/com/img3d/app
+          echo "package com.img3d.app; public class R {}" > gen/com/img3d/app/R.java
         fi
-        echo "APK: $APK"
-        cp "$APK" img3d.apk
 
-    - name: Upload APK
+        # ۳. کامپایل جاوا
+        mkdir -p obj
+        javac -source 1.8 -target 1.8 -bootclasspath $ANDROID_JAR -d obj src/com/img3d/app/MainActivity.java gen/com/img3d/app/R.java
+
+        # ۴. ساخت DEX
+        $D8 --release --lib $ANDROID_JAR --output . $(find obj -name '*.class')
+        # d8 خروجی را در classes.dex می‌ریزد
+
+        # ۵. بسته‌بندی APK
+        $AAPT package -f -M AndroidManifest.xml -S res -I $ANDROID_JAR -F app-unsigned.apk
+        $AAPT add app-unsigned.apk classes.dex
+
+        # ۶. امضای APK
+        keytool -genkey -v -keystore debug.keystore -alias debug -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=US" 2>/dev/null || true
+        $APKSIGNER sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android app-unsigned.apk
+
+        # ۷. انتقال به ریشه
+        mv app-unsigned.apk ../img3d.apk
+        echo "✅ APK ساخته شد: img3d.apk"
+
+    - name: آپلود APK
       uses: actions/upload-artifact@v4
       with:
         name: img3d-apk
         path: img3d.apk
 
-    - name: Create Release
+    - name: انتشار نسخه
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.run_number }}
